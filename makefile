@@ -13,3 +13,4 @@ main: $(OBJS)
 
 clean:
 	rm -f *.o main core out
+
