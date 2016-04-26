@@ -29,3 +29,4 @@ glinked:
 	cp malloc_ll.h gawk-4.1.3/mymalloc.h
 	cp Makefile_gawk gawk-4.1.3/Makefile
 	$(MAKE) -C gawk-4.1.3 check
+
