@@ -145,7 +145,7 @@ am__objects_1 = array.$(OBJEXT) awkgram.$(OBJEXT) builtin.$(OBJEXT) \
 	io.$(OBJEXT) main.$(OBJEXT) mpfr.$(OBJEXT) msg.$(OBJEXT) \
 	node.$(OBJEXT) profile.$(OBJEXT) random.$(OBJEXT) re.$(OBJEXT) \
 	regex.$(OBJEXT) replace.$(OBJEXT) str_array.$(OBJEXT) \
-	symbol.$(OBJEXT) version.$(OBJEXT)
+	symbol.$(OBJEXT) version.$(OBJEXT) mymalloc.$(OBJEXT)
 am_gawk_OBJECTS = $(am__objects_1)
 gawk_OBJECTS = $(am_gawk_OBJECTS)
 gawk_LDADD = $(LDADD)
@@ -536,6 +536,7 @@ base_sources = \
 	str_array.c \
 	symbol.c \
 	version.c \
+  mymalloc.c \
 	xalloc.h
 
 gawk_SOURCES = $(base_sources)
