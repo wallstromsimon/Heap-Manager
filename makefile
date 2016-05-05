@@ -9,17 +9,17 @@ OUT		= main
 OBJS		= test.c malloc_ll.c
 
 LL		= test.c malloc_ll.c
+LLOLD		= test.c malloc_ll_2015.c
 BUD		= test.c buddy.c
-
-
-main: $(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $(OUT)
 
 linked: $(LL)
 	$(CC) $(LDFLAGS) $(LL) -o $(OUT)
 
 buddy: $(BUD)
 	$(CC) $(LDFLAGS) $(BUD) -o $(OUT)
+
+oldlinked: $(LLOLD)
+	$(CC) $(LDFLAGS) $(LLOLD) -o $(OUT)
 
 clean:
 	rm -f *.o main core out
