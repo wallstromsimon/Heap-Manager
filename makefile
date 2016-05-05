@@ -6,32 +6,47 @@ LDFLAGS		= -g
 
 OUT		= main
 
-OBJS		= test.c malloc_ll.c
-
-LL		= test.c malloc_ll.c
-LLOLD		= test.c malloc_ll_2015.c
-BUD		= test.c buddy.c
+TEST		= test.c
+LL		= malloc_ll.c
+LLOLD		= malloc_ll_old.c
+BUD		= buddy.c
+BUD2		= buddy2.c
 
 linked: $(LL)
-	$(CC) $(LDFLAGS) $(LL) -o $(OUT)
+	$(CC) $(LDFLAGS) $(TEST) $(LL) -o $(OUT)
 
 buddy: $(BUD)
-	$(CC) $(LDFLAGS) $(BUD) -o $(OUT)
+	$(CC) $(LDFLAGS) $(TEST) $(BUD) -o $(OUT)
+
+buddy2: $(BUD2)
+	$(CC) $(LDFLAGS) $(TEST) $(BUD2) -o $(OUT)
 
 oldlinked: $(LLOLD)
-	$(CC) $(LDFLAGS) $(LLOLD) -o $(OUT)
+	$(CC) $(LDFLAGS) $(TEST) $(LLOLD) -o $(OUT)
 
 clean:
-	rm -f *.o main core out
+	rm -f *.o main
 
 glinked:
-	cp malloc_ll.c gawk-4.1.3/mymalloc.c
-	cp malloc_ll.h gawk-4.1.3/mymalloc.h
+	cp $(LL) gawk-4.1.3/mymalloc.c
+	cp mymalloc.h gawk-4.1.3/mymalloc.h
+	cp Makefile_gawk gawk-4.1.3/Makefile
+	$(MAKE) -C gawk-4.1.3 check
+
+goldlinked:
+	cp $(LLOLD) gawk-4.1.3/mymalloc.c
+	cp mymalloc.h gawk-4.1.3/mymalloc.h
 	cp Makefile_gawk gawk-4.1.3/Makefile
 	$(MAKE) -C gawk-4.1.3 check
 
 gbuddy:
-	cp buddy2.c gawk-4.1.3/mymalloc.c
-	cp buddy.h gawk-4.1.3/mymalloc.h
+	cp $(BUD) gawk-4.1.3/mymalloc.c
+	cp mymalloc.h gawk-4.1.3/mymalloc.h
+	cp Makefile_gawk gawk-4.1.3/Makefile
+	$(MAKE) -C gawk-4.1.3 check
+
+gbuddy:
+	cp $(BUD2) gawk-4.1.3/mymalloc.c
+	cp mymalloc.h gawk-4.1.3/mymalloc.h
 	cp Makefile_gawk gawk-4.1.3/Makefile
 	$(MAKE) -C gawk-4.1.3 check
