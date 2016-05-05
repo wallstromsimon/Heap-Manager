@@ -1,6 +1,7 @@
 # Stuff
 gawk*
 old*
+main
 
 # Object files
 *.o

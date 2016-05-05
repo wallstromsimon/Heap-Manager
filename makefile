@@ -9,7 +9,7 @@ OUT		= main
 OBJS		= test.c malloc_ll.c
 
 LL		= test.c malloc_ll.c
-BUD		= test.c malloc_ll.c
+BUD		= test.c buddy.c
 
 
 main: $(OBJS)
@@ -30,3 +30,8 @@ glinked:
 	cp Makefile_gawk gawk-4.1.3/Makefile
 	$(MAKE) -C gawk-4.1.3 check
 
+gbuddy:
+	cp buddy2.c gawk-4.1.3/mymalloc.c
+	cp buddy.h gawk-4.1.3/mymalloc.h
+	cp Makefile_gawk gawk-4.1.3/Makefile
+	$(MAKE) -C gawk-4.1.3 check
