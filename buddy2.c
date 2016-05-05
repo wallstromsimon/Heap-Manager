@@ -32,7 +32,8 @@ int init_mem()
 
 size_t nextpow2(size_t size)
 {
-    //only works on x86 with 32bit....
+    //only works on x86, gcc may fix it otherwise
+    //clz: count leading zeros
     return (32 - __builtin_clz(size-1));
 }
 
@@ -111,6 +112,9 @@ void add_to_freelist(mem_block* block)
     if(head){
         block->next = head;
         head->prev = block;
+    }else{ //just added
+        block->next = NULL;
+        block->prev = NULL;
     }
     freelist[block->kval] = block;
 }
@@ -171,6 +175,8 @@ void *realloc(void *ptr, size_t size)
 
     if(((mem_block*)ptr - 1)->kval >= k);
         return ptr;
+
+    //Check if buddy is free
 
     void *new_ptr = malloc(size);
     if(!new_ptr){

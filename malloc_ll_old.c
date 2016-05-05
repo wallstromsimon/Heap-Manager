@@ -100,6 +100,9 @@ void *realloc(void *ptr, size_t size)
 void *calloc(size_t n, size_t size)
 {
     void *ret = malloc(n * size);
+    if(!ret){
+        return NULL;
+    }
     memset(ret, 0, n * size);
     return ret;
 }
