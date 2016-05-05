@@ -54,8 +54,8 @@ void *malloc(size_t size)
         mem_block *end = mem;
         block = try_reuse_block(&end, size);
     }
-    if(!block)
-        return NULL;
+//    if(!block)
+//        return NULL;
     return block + 1;
 }
 
@@ -78,7 +78,16 @@ void *realloc(void *ptr, size_t size)
     if(((mem_block*)ptr - 1)->size >= size)
         return ptr;
 
-    //Test if ((mem_bloc*)ptr+((mem_block*)ptr - 1)->size)->size räcker
+    //Test if ((mem_bloc*)ptr+((mem_block*)ptr - 1)->size)->size räcker & avail
+    /*mem_block *next = ((mem_block*)ptr-1)->next;
+    if(next && (char*)(ptr + size) == (char*)next && next->avail == 1 && ((((mem_block*)ptr - 1)->size + next->size + 1) >= size)){
+        printf("merg\n");
+        next->avail = 0;
+        ((mem_block*)ptr-1)->size += next->size + 1;
+        ((mem_block*)ptr-1)->next = next->next;
+        return ptr;
+    }*/
+
     void *new_ptr = malloc(size);
     if(!new_ptr){
         return NULL;
