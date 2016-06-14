@@ -29,6 +29,9 @@ oldlinked: $(LLOLD)
 clean:
 	rm -f *.o main
 
+gclean:
+	rm -f gawk-4.1.3/mymalloc.* gawk-4.1.3/Makefile
+
 glinked:
 	cp $(LL) gawk-4.1.3/mymalloc.c
 	cp mymalloc.h gawk-4.1.3/mymalloc.h

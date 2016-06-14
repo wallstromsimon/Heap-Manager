@@ -86,11 +86,13 @@ void* malloc(size_t size)
     }
     size_t k = nextpow2(size+OFFSET);
     //Sanity check
+    /*
     size_t k2;
     adjust_size(size, &k2);
     if(k != k2){
         printf("k = %zu, k2 = %zu\n",k,k2 );
     }
+    */
 
     if(k > N)
         return NULL; //Not enough mem
@@ -114,30 +116,17 @@ void* malloc(size_t size)
     //printf("found free at lvl: %zu\n", i);
     //For each I : K < I < J split the block in two pieces, set their kval,
     //reserved, succ and pred attributes, and put them into freelist[I − 1]
-    while(i > k){ // > or >=
-        block = take_free_block(i); //should never be null
-        i--;
-        block->kval = i;
-        //block->avail = 1;
-        //block->prev = NULL;
-        add_to_freelist(block);
-        mem_block* buddy = (mem_block*)((char*)(block) + (1<<i));
-        buddy->kval = i;
-        //buddy->avail = 1;
-        //buddy->prev = block;
-        //buddy->next = NULL;
-
-        //block->next = buddy;
-
-        //freelist[i] = block;
+    block = take_free_block(i); //should never be null
+    while(i > k){
+        mem_block* buddy = (mem_block*)((char*)(block) + (1<<--i));
+        block->kval = buddy->kval = i;
         add_to_freelist(buddy);
     }
-
-    block = take_free_block(k);
+    //printf("seg..\n");
     block->avail = 0;
+    //printf("...fault?\n");
     //printf("take block at: %p, avail: %d\n", block, block->avail);
     return block+1;
-
 }
 
 mem_block* merge_blocks(mem_block* block)//find and return buddy
@@ -189,13 +178,16 @@ void *realloc(void *ptr, size_t size)
         free(ptr);
         return NULL;
     }
-    if(!ptr)
+    if(!ptr){
         return malloc(size);
+    }
 
     size_t k = nextpow2(size+OFFSET);
+    mem_block* block = (mem_block*)ptr - 1;
 
-    if(((mem_block*)ptr - 1)->kval >= k);
+    if(block->kval >= k){
         return ptr;
+    }
 
     //Check if buddy is free
 
@@ -204,7 +196,7 @@ void *realloc(void *ptr, size_t size)
         return NULL;
     }
 
-    memcpy(new_ptr, ptr, (1<<(((mem_block*)ptr - 1)->kval)) - OFFSET);
+    memcpy(new_ptr, ptr, (1<<(block->kval)) - OFFSET);
     free(ptr);
     return new_ptr;
 }
@@ -213,8 +205,9 @@ void *calloc(size_t n, size_t size)
 {
     //printf("calloc\n");
     void *ret = malloc(n * size);
-    if(!ret)
+    if(!ret){
         return NULL;
+    }
 
     memset(ret, 0, n * size);
     return ret;

@@ -6,7 +6,7 @@
 
 int main()
 {
-	int*	i_ptr;
+	/*int*	i_ptr;
 	int*	j_ptr;
 	int*	k_ptr;
 	int*	l_ptr;
@@ -78,7 +78,21 @@ int main()
 	free(c);
 	free(d);
 	b = malloc(1234);
-	printf("%zu, %zu\n",a,b );
+	printf("%zu, %zu\n\n\n",a,b );
+	free(a);
+	free(b);*/
+
+	void* p;
+    size_t POOL_SIZE = (1<<30);
+	//p = malloc(POOL_SIZE-BLOCK_SIZE+0);
+	//printf("addr: %p\n",p);
+	//size_t s=POOL_SIZE;
+	//size_t sh=POOL_SIZE/2;
+	//printf("%zu, %zu\n",s,sh);
+	p=malloc(POOL_SIZE / 2);
+	printf("addr1: %p\n",p);
+	p=realloc(p, POOL_SIZE * 3);
+	printf("addr2: %p\n",p);
 
 	return 0;
 }
