@@ -11,8 +11,8 @@ struct mem_block{
     mem_block* prev;
 };
 
-#define OFFSET (sizeof(mem_block)) //24 on my comp
-#define N (30) //2^22 = 4194304
+#define OFFSET (sizeof(mem_block))
+#define N (30) //2^30 = 1073741824
 
 static mem_block* mem = NULL;
 static mem_block* freelist[(N+1)];
@@ -37,17 +37,6 @@ size_t nextpow2(size_t size)
     return (32 - __builtin_clz(size-1));
 }
 
-/*adjust the size to be a multiple by 2. The number of shifts are returned in index*/
-void adjust_size(size_t size, size_t* index)
-{
-    size_t new_size = 1;
-    *index = 0;
-    while(new_size < size + OFFSET){
-        ++(*index);
-        new_size  = 1<<*index;
-    }
-}
-
 mem_block* take_free_block(size_t index)
 {
     mem_block* block = freelist[index];
@@ -56,7 +45,7 @@ mem_block* take_free_block(size_t index)
         if(freelist[index])
             freelist[index]->prev = NULL;
         block->next = NULL;
-        block->prev = NULL; //borde redan vara null
+        block->prev = NULL;
     }
     return block;
 }
@@ -81,59 +70,41 @@ void* malloc(size_t size)
     if(size <= 0)
         return NULL;
     if(!mem){
-        if(init_mem())
+        if(init_mem()){
             return NULL;
+        }
     }
     size_t k = nextpow2(size+OFFSET);
-    //Sanity check
-    /*
-    size_t k2;
-    adjust_size(size, &k2);
-    if(k != k2){
-        printf("k = %zu, k2 = %zu\n",k,k2 );
-    }
-    */
 
-    if(k > N)
+    if(k > N){
         return NULL; //Not enough mem
-
-    size = 1<<k; //Increase size to be the smallest power of two: size = 2^k
-    //printf("malloc lvl %zu mapped to %zu\n", k, size);
-    mem_block* block = take_free_block(k);
-
-    if(block){
-        block->avail = 0;
-        //printf("take block at: %p\n", block);
-        return block+1;
     }
+
     //Find the first list J with an available block; J >= K
     size_t i = k;
     while(!freelist[i]){
         i++;
-        if(i>N)
+        if(i>N){
             return NULL; // If no such J exists, then return NULL.
+        }
     }
-    //printf("found free at lvl: %zu\n", i);
+
     //For each I : K < I < J split the block in two pieces, set their kval,
     //reserved, succ and pred attributes, and put them into freelist[I − 1]
-    block = take_free_block(i); //should never be null
+    mem_block* block = take_free_block(i); //should never be null
     while(i > k){
         mem_block* buddy = (mem_block*)((char*)(block) + (1<<--i));
         block->kval = buddy->kval = i;
         add_to_freelist(buddy);
     }
-    //printf("seg..\n");
     block->avail = 0;
-    //printf("...fault?\n");
-    //printf("take block at: %p, avail: %d\n", block, block->avail);
     return block+1;
 }
 
-mem_block* merge_blocks(mem_block* block)//find and return buddy
+mem_block* merge_blocks(mem_block* block)
 {
     mem_block* buddy = (mem_block*)((char*)mem + ((((char*)block) - (char*)mem) ^ (1 << block->kval)));
-    if(block->kval != N && buddy->avail && (block->kval == buddy->kval)){ //if buddy, try to free the new block
-        //printf("avail buddy at lvl: %d\n", block->kval);
+    if(block->kval != N && buddy->avail && (block->kval == buddy->kval)){//remove block method?
         if(freelist[buddy->kval] == buddy){
         	if(buddy->next){
                 buddy->next->prev = NULL;
@@ -151,21 +122,19 @@ mem_block* merge_blocks(mem_block* block)//find and return buddy
         buddy->next = NULL;
         block = block < buddy ? block : buddy;
         block->kval += 1;
-        block = merge_blocks(block);
+        block = merge_blocks(block); //This line.......
     }
     return block;
 }
 
 void free(void *ptr)
 {
-    //printf("free\n");
-    if(!ptr)
+    if(!ptr){
         return;
+    }
     mem_block* block = (mem_block*)ptr - 1;
     block->avail = 1;
-    if(block->kval <= N){
-        block = merge_blocks(block);
-    }
+    block = merge_blocks(block);
     block->avail = 1;
     add_to_freelist(block);
     return;
@@ -173,7 +142,6 @@ void free(void *ptr)
 
 void *realloc(void *ptr, size_t size)
 {
-    //printf("realloc\n");
     if(!size){
         free(ptr);
         return NULL;
@@ -189,7 +157,7 @@ void *realloc(void *ptr, size_t size)
         return ptr;
     }
 
-    //Check if buddy is free
+    //TODO: Check if buddy is free, merge.
 
     void *new_ptr = malloc(size);
     if(!new_ptr){
@@ -203,12 +171,11 @@ void *realloc(void *ptr, size_t size)
 
 void *calloc(size_t n, size_t size)
 {
-    //printf("calloc\n");
     void *ret = malloc(n * size);
     if(!ret){
         return NULL;
     }
-
+    
     memset(ret, 0, n * size);
     return ret;
 }
