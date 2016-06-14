@@ -37,6 +37,17 @@ size_t nextpow2(size_t size)
     return (32 - __builtin_clz(size-1));
 }
 
+/*adjust the size to be a multiple by 2. The number of shifts are returned in index*/
+void adjust_size(size_t size, size_t* index)
+{
+    size_t new_size = 1;
+    *index = 0;
+    while(new_size < size + OFFSET){
+        ++(*index);
+        new_size  = 1<<*index;
+    }
+}
+
 mem_block* take_free_block(size_t index)
 {
     mem_block* block = freelist[index];
@@ -60,6 +71,13 @@ void* malloc(size_t size)
             return NULL;
     }
     size_t k = nextpow2(size+OFFSET);
+    //Sanity check
+    size_t k2;
+    adjust_size(size, &k2);
+    if(k != k2){
+        printf("k = %zu, k2 = %zu\n",k,k2 );
+    }
+
     if(k > N)
         return NULL; //Not enough mem
     size = 1<<k; //Increase size to be the smallest power of two: size = 2^K
@@ -112,7 +130,7 @@ void add_to_freelist(mem_block* block)
     if(head){
         block->next = head;
         head->prev = block;
-    }else{ //just added
+    }else{ //just add
         block->next = NULL;
         block->prev = NULL;
     }

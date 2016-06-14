@@ -67,5 +67,18 @@ int main()
 
 	puts("ALL TESTS PASSED");
 
+	int* a = malloc(32);
+	int* b = malloc(32);
+	int* c = malloc(32);
+	int* d = malloc(32);
+	printf("%zu, %zu, %zu, %zu \n",a,b,c,d );
+	free(a);
+	free(b);
+	a = malloc(60);
+	free(c);
+	free(d);
+	b = malloc(1234);
+	printf("%zu, %zu\n",a,b );
+
 	return 0;
 }
