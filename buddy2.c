@@ -61,6 +61,20 @@ mem_block* take_free_block(size_t index)
     return block;
 }
 
+void add_to_freelist(mem_block* block)
+{
+    mem_block* head = freelist[block->kval];
+    block->avail = 1;
+    if(head){
+        block->next = head;
+        head->prev = block;
+    }else{ //just add
+        block->next = NULL;
+    }
+    block->prev = NULL;
+    freelist[block->kval] = block;
+}
+
 void* malloc(size_t size)
 {
     //printf("malloc\n");
@@ -122,19 +136,6 @@ void* malloc(size_t size)
     //printf("take block at: %p, avail: %d\n", block, block->avail);
     return block+1;
 
-}
-
-void add_to_freelist(mem_block* block)
-{
-    mem_block* head = freelist[block->kval];
-    if(head){
-        block->next = head;
-        head->prev = block;
-    }else{ //just add
-        block->next = NULL;
-        block->prev = NULL;
-    }
-    freelist[block->kval] = block;
 }
 
 mem_block* merge_blocks(mem_block* block)//find and return buddy
