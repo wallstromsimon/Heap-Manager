@@ -131,7 +131,7 @@ void* malloc(size_t size)
 
 mem_block* merge_blocks(mem_block* block)//find and return buddy
 {
-    mem_block* buddy = (mem_block*)((char*)mem + (((char*)block - (char*)mem) ^ (1 << block->kval)));
+    mem_block* buddy = (mem_block*)((char*)mem + ((((char*)block) - (char*)mem) ^ (1 << block->kval)));
     if(block->kval != N && buddy->avail && (block->kval == buddy->kval)){ //if buddy, try to free the new block
         //printf("avail buddy at lvl: %d\n", block->kval);
         if(freelist[buddy->kval] == buddy){
@@ -151,7 +151,7 @@ mem_block* merge_blocks(mem_block* block)//find and return buddy
         buddy->next = NULL;
         block = block < buddy ? block : buddy;
         block->kval += 1;
-        merge_blocks(block);
+        block = merge_blocks(block);
     }
     return block;
 }
