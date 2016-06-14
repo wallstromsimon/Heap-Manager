@@ -94,7 +94,8 @@ void* malloc(size_t size)
 
     if(k > N)
         return NULL; //Not enough mem
-    size = 1<<k; //Increase size to be the smallest power of two: size = 2^K
+
+    size = 1<<k; //Increase size to be the smallest power of two: size = 2^k
     //printf("malloc lvl %zu mapped to %zu\n", k, size);
     mem_block* block = take_free_block(k);
 
@@ -117,18 +118,19 @@ void* malloc(size_t size)
         block = take_free_block(i); //should never be null
         i--;
         block->kval = i;
-        block->avail = 1;
-        block->prev = NULL;
-
+        //block->avail = 1;
+        //block->prev = NULL;
+        add_to_freelist(block);
         mem_block* buddy = (mem_block*)((char*)(block) + (1<<i));
         buddy->kval = i;
-        buddy->avail = 1;
-        buddy->prev = block;
-        buddy->next = NULL;
+        //buddy->avail = 1;
+        //buddy->prev = block;
+        //buddy->next = NULL;
 
-        block->next = buddy;
+        //block->next = buddy;
 
-        freelist[i] = block;
+        //freelist[i] = block;
+        add_to_freelist(buddy);
     }
 
     block = take_free_block(k);
