@@ -1,192 +1,181 @@
-#include <string.h> //fo memset
+#include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 
 typedef struct mem_block mem_block;
 
 struct mem_block{
-    size_t size; //with offset
-    mem_block* parent;
-    mem_block* left;
-    mem_block* right;
-    int avail;
+    unsigned avail:1;
+    char kval;
+    mem_block* next;
+    mem_block* prev;
 };
 
 #define OFFSET (sizeof(mem_block))
+#define N (30) //2^30 = 1073741824
 
 static mem_block* mem = NULL;
-static size_t N = 4194304; //65536
+static mem_block* freelist[(N+1)];
 
-int init_mem();
-int extend_mem();
-mem_block* find_avail_block(size_t size);
-
-void *malloc(size_t size)
+int init_mem()
 {
-    //printf("malloc req: %zu\n", size);
-    printf("malloc\n");
+    mem = sbrk(1<<N);
+    if(mem == (void*)(-1))
+        return 1;
+    mem->avail = 1;
+    mem->kval = N;
+    mem->next = NULL;
+    mem->prev = NULL;
+    freelist[N] = mem;
+    return 0;
+}
+
+size_t nextpow2(size_t size)
+{
+    //only works on x86, gcc may fix it otherwise
+    //clz: count leading zeros
+    return (32 - __builtin_clz(size-1));
+}
+
+mem_block* take_free_block(size_t index)
+{
+    mem_block* block = freelist[index];
+    if(block){
+        freelist[index] = block->next;
+        if(freelist[index])
+            freelist[index]->prev = NULL;
+        block->next = NULL;
+        block->prev = NULL;
+    }
+    return block;
+}
+
+void add_to_freelist(mem_block* block)
+{
+    mem_block* head = freelist[block->kval];
+    block->avail = 1;
+    if(head){
+        block->next = head;
+        head->prev = block;
+    }else{ //just add
+        block->next = NULL;
+    }
+    block->prev = NULL;
+    freelist[block->kval] = block;
+}
+
+void* malloc(size_t size)
+{
+    //printf("malloc\n");
     if(size <= 0)
         return NULL;
-
-    if(mem == NULL){ //init memory, own method?
-        if(init_mem())
+    if(!mem){
+        if(init_mem()){
             return NULL;
+        }
+    }
+    size_t k = nextpow2(size+OFFSET);
+
+    if(k > N){
+        return NULL; //Not enough mem
     }
 
-    mem_block *ret = find_avail_block(size+OFFSET);
-    //printf("malloc ret: %zu, on addr: %p\n", ret->size, ret);
-    return ret+1;
+    //Find the first list J with an available block; J >= K
+    size_t i = k;
+    while(!freelist[i]){
+        i++;
+        if(i>N){
+            return NULL; // If no such J exists, then return NULL.
+        }
+    }
+
+    //For each I : K < I < J split the block in two pieces
+    mem_block* block = take_free_block(i); //should never be null, since 'while' above
+    while(i > k){
+        mem_block* buddy = (mem_block*)((char*)(block) + (1<<--i));
+        block->kval = buddy->kval = i;
+        add_to_freelist(buddy);
+    }
+    block->avail = 0;
+    return block+1;
 }
 
-void free(void* ptr)
+mem_block* merge_blocks(mem_block* block)
 {
-    printf("free\n");
-    if(!ptr)
-        return;
+    mem_block* buddy = (mem_block*)((char*)mem + ((((char*)block) - (char*)mem) ^ (1 << block->kval)));
+    if(block->kval != N && buddy->avail && (block->kval == buddy->kval)){//remove block method?
+        if(freelist[buddy->kval] == buddy){
+        	if(buddy->next){
+                buddy->next->prev = NULL;
+                freelist[buddy->kval] = buddy->next;
+        	}else{
+                freelist[buddy->kval] = NULL;
+        	}
+        }else{
+    		if(buddy->next)
+                buddy->next->prev = buddy->prev;
+    		if(buddy->prev)
+                buddy->prev->next = buddy->next;
+        }
+        buddy->prev = NULL;
+        buddy->next = NULL;
+        block = block < buddy ? block : buddy;
+        block->kval += 1;
+        block = merge_blocks(block);
+    }
+    return block;
+}
 
+void free(void *ptr)
+{
+    if(!ptr){
+        return;
+    }
+    
     mem_block* block = (mem_block*)ptr - 1;
     block->avail = 1;
-    block = block->parent;
-    while(block && block->left->avail && block->right->avail){
-        block->avail = 1;
-        block = block->parent;
-    }
-}
-
-void *calloc(size_t n, size_t size)
-{
-    printf("calloc\n");
-    void *ret = malloc(n * size);
-    if(!ret)
-        return NULL;
-    memset(ret, 0, n * size);
-    return ret;
+    block = merge_blocks(block);
+    block->avail = 1;
+    add_to_freelist(block);
+    return;
 }
 
 void *realloc(void *ptr, size_t size)
 {
-    printf("realloc\n");
     if(!size){
         free(ptr);
         return NULL;
     }
-    if(!ptr)
+    if(!ptr){
         return malloc(size);
-
-    mem_block* block = (mem_block*)ptr - 1;
-    if(block->size >= size)//räcker halva?
-        return ptr;
-
-    block->avail = 1;
-    block = block->parent;
-    while(block && block->left->avail && block->right->avail){
-        block->avail = 1;
-        if(block->size >= size)
-            break;
-        block = block->parent;
     }
 
-    if(block && block->size >= size)
+    size_t k = nextpow2(size+OFFSET);
+    mem_block* block = (mem_block*)ptr - 1;
+
+    if(block->kval >= k){
         return ptr;
+    }
+
+    //TODO: Check if buddy is free, merge.
 
     void *new_ptr = malloc(size);
-    if(!new_ptr)
+    if(!new_ptr){
         return NULL;
+    }
 
-    memcpy(new_ptr, ptr, ((mem_block*)ptr - 1)->size);
+    memcpy(new_ptr, ptr, (1<<(block->kval)) - OFFSET);
     free(ptr);
     return new_ptr;
 }
 
-int init_mem()
+void *calloc(size_t n, size_t size)
 {
-    mem = sbrk(N);
-    if(mem == (void*)(-1))
-        return 1;
-    //printf("init addr: %p\n", mem);
-    mem->size = N;
-    mem->parent = NULL; //Head
-    mem->left = NULL;
-    mem->right = NULL;
-    mem->avail = 1;
-    return 0;
-}
-
-int extend_mem()
-{
-    printf("extend\n");
-    mem_block* mem_parent = sbrk(N+OFFSET);
-    if(mem_parent == (void*)(-1))
-        return 1;
-    //printf("extending: %zu\n", N);
-    mem_block* mem_buddy = mem_parent + 1;
-
-    mem_parent->parent = NULL;//new head
-    mem_parent->size = 2*N+OFFSET;
-    mem_parent->left = mem;
-    mem_parent->right = mem_buddy;
-    mem_parent->avail = 0;
-
-    mem->parent = mem_parent;
-
-    mem_buddy->size = N;
-    mem_buddy->parent = mem_parent;
-    mem_buddy->left = NULL;
-    mem_buddy->right = NULL;
-    mem_buddy->avail = 1;
-    N *= 2;
-    mem = mem_parent;
-    return 0;
-}
-
-mem_block* pre_order_lookup(size_t size, mem_block* root)
-{
-    static int i;
-    i++;
-    printf("lookup at: %d\n", i);
-    mem_block* tmp;
-    if(root && root->size >= size){
-        if(root->avail){
-            return root;
-        }
-        tmp = pre_order_lookup(size, root->left);
-        if(!tmp)
-            tmp = pre_order_lookup(size, root->right);
-        return tmp;
-    }
-    return NULL;
-}
-
-mem_block* find_avail_block(size_t size) //size = size + OFFSET
-{
-    mem_block* block = pre_order_lookup(size, mem);
-    while(!block){
-        if(extend_mem())
-            return NULL;
-        block = pre_order_lookup(size, mem);
+    void *ret = malloc(n * size);
+    if(!ret){
+        return NULL;
     }
 
-    while((size + OFFSET) <= (block->size/2)){ //split block
-        block->left = block + 1;
-        block->left->size = block->size/2;
-        //printf("new left at: %p\n", block->left);
-        block->left->parent = block;
-        block->left->left = NULL;
-        block->left->right = NULL;
-        block->left->avail = 0;
-
-        block->right = (mem_block*)((char*)(block) + block->size/2);
-        //printf("new right at: %p\n", block->right);
-        block->right->size = block->size/2;
-        block->right->parent = block;
-        block->right->left = NULL;
-        block->right->right = NULL;
-        block->right->avail = 1;
-
-        block->avail = 0;
-        block = block->left;
-        //return block->left;
-    }
-    block->avail = 0;
-    return block;
+    memset(ret, 0, n * size);
+    return ret;
 }
